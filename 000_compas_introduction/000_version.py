@@ -3,4 +3,5 @@
 # r: compas_rv
 
 import compas
+
 print(compas.__version__)

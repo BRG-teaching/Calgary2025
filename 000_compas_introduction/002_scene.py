@@ -13,6 +13,7 @@
 from compas.geometry import Box
 from compas.scene import Scene
 import compas
+
 print(compas.__version__)
 
 # Create a box
