@@ -1,0 +1,11 @@
+name: workshop
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - pip
+  - compas >=2.8.1
+  - compas_cgal
+  - compas_occ
+  - pip:
+      - -r requirements.txt
