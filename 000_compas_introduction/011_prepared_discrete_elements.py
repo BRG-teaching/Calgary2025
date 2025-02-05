@@ -10,30 +10,32 @@ from compas.geometry import Box
 from compas.geometry import Frame
 from compas.geometry import Brep
 
-from compas_model.models import Model
 from compas.datastructures import Mesh
 from compas.scene import Scene
 from compas import json_load
 import pathlib
 
 # Deserialize Mesh
-filepath = pathlib.Path(__file__).parent.parent / "data" / "010_prepared_mesh.json"
-mesh = json_load(filepath)
+# filepath = pathlib.Path(__file__).parent.parent / "data" / "010_prepared_mesh.json"
+# mesh = json_load(filepath)
 
+trimesh = Mesh.from_obj(pathlib.Path(__file__).parent.parent / "data" / "remeshed.obj")
+mesh = trimesh.dual(include_boundary=True)
+mesh.flip_cycles()
 
 scene = Scene()
-scene.clear_context()
+# scene.clear_context()
 
 
-model = Model()
-distance = 20
+distance = 10
 mesh_out: Mesh = mesh.offset(distance * 0.5)
 mesh_in: Mesh = mesh.offset(-distance * 0.5)
 block_meshes = []
 
 elements = []
+fkey_index = {}
 
-for face in mesh.faces():
+for i_face, face in enumerate(mesh.faces()):
     vertices = mesh.face_vertices(face)
     plane_out = Plane.from_points(mesh_out.vertices_points(vertices))
     plane_in = Plane.from_points(mesh_in.vertices_points(vertices))
@@ -45,9 +47,9 @@ for face in mesh.faces():
         pt_out = mesh_out.vertex_point(vertex)
         line = Line(pt_in, pt_out)
         intersection_out = plane_out.intersection_with_line(line)
-        intersection_in = plane_in.intersection_with_line(line)
+        # intersection_in = plane_in.intersection_with_line(line)
         new_out_points.append(intersection_out)
-        new_in_points.append(intersection_in)
+        new_in_points.append(pt_in)
 
     # Create a mesh block by connecting the two polygons
     block_vertices = new_out_points + new_in_points
@@ -73,21 +75,19 @@ for face in mesh.faces():
     is_side_face.append(False)
 
     block_mesh = Mesh.from_vertices_and_faces(block_vertices, block_faces)
-    for face in block_mesh.faces():
-        block_mesh.face_attribute(face, "is_side_face", is_side_face[face])
+    for bface in block_mesh.faces():
+        block_mesh.face_attribute(bface, "is_side_face", is_side_face[bface])
 
     brep = Brep.from_mesh(block_mesh)
     block_meshes.append(brep)
-
-for i, element in enumerate(model.elements()):
-    assert element == elements[i]
-    scene.add(element.modelgeometry)
+    fkey_index[face] = i_face
 
 
 for edge in mesh.edges():
     face1, face2 = mesh.edge_faces(edge)
     if face1 is not None and face2 is not None:
         line = mesh.edge_line(edge)
+        scene.add(line)
         z_axis = line.direction
         x_axis = mesh.vertex_normal(edge[0]) + mesh.vertex_normal(edge[1])
         y_axis = x_axis.cross(z_axis)
@@ -102,8 +102,10 @@ for edge in mesh.edges():
         box0 = Box(xsize + tolerance, ysize + tolerance, zsize + tolerance, frame)
         box1 = Box(xsize, ysize, zsize, frame)
 
-        block_meshes[face1] = block_meshes[face1] - box0.to_brep()
-        block_meshes[face2] = block_meshes[face2] + box1.to_brep()
+        i1 = fkey_index[face1]
+        i2 = fkey_index[face2]
+        block_meshes[i1] = block_meshes[i1] - box0.to_brep()
+        block_meshes[i2] = block_meshes[i2] + box1.to_brep()
 
 # Vizualization
 for block in block_meshes:
