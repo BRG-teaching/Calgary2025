@@ -45,8 +45,8 @@ for edge in dual.edges():
 
         # make two spheres along the edge
         block1 = block1 - sphere1a.to_brep()
-        block2 = block2 - sphere1b.to_brep()
-        block1 = block1 + sphere2a.to_brep()
+        block1 = block1 - sphere1b.to_brep()
+        block2 = block2 + sphere2a.to_brep()
         block2 = block2 + sphere2b.to_brep()
 
         block_breps[face1] = block1
