@@ -8,6 +8,7 @@ from compas.datastructures import Mesh
 from compas.itertools import pairwise
 from compas.scene import Scene
 from compas import json_dump
+from compas.geometry import Line
 
 
 def break_boundary(mesh: Mesh, breakpoints: list[int]) -> tuple[list[list[int]], list[int]]:
@@ -43,6 +44,7 @@ dual = compas.json_load(IFILE)
 # =============================================================================
 
 tocollapse = []
+lines = []
 
 for u, v in dual.edges_on_boundary():
     if dual.vertex_attribute(u, "is_corner") or dual.vertex_attribute(v, "is_corner"):
@@ -56,6 +58,7 @@ for u, v in dual.edges_on_boundary():
         tocollapse.append((uu, vv))
 
 for u, v in tocollapse:
+    lines.append(Line(dual.vertex_coordinates(u), dual.vertex_coordinates(v)))
     dual.collapse_edge((u, v), allow_boundary=True)
 
 # =============================================================================
@@ -71,4 +74,6 @@ json_dump(dual, pathlib.Path(__file__).parent.parent / "data" / "007_mesh.json")
 scene = Scene()
 scene.clear_context()
 scene.add(dual)
+for line in lines:
+    scene.add(line)
 scene.draw()

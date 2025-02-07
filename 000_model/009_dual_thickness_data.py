@@ -30,11 +30,11 @@ supports_by_height = sorted(mesh.attributes["supports"], key=lambda v: mesh.vert
 
 for support in supports_by_height[:4]:
     points.append(mesh.vertex_attributes(support, "xy"))
-    values.append(50)
+    values.append(30)
 
 for support in supports_by_height[4:]:
     points.append(mesh.vertex_attributes(support, "xy"))
-    values.append(30)
+    values.append(20)
 
 for border in mesh.attributes["borders"]:
     if len(border) > 4:

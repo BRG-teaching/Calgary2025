@@ -8,6 +8,8 @@ from compas.colors import Color
 from compas.datastructures import Mesh
 from compas.geometry import Line
 from compas.geometry import Plane
+from compas.geometry import Polygon
+from compas.geometry import Frame
 from compas.geometry import bestfit_plane_numpy
 from compas.itertools import pairwise
 from compas.scene import Scene
@@ -55,10 +57,18 @@ for face in dual.faces():
     for index, (u, v) in enumerate(pairwise(vertices + vertices[:1])):
         is_support = dual.edge_attribute((u, v), name="is_support")
         if is_support:
-            face = 2 + index
-            block.face_attribute(face, "is_support", True)
+            block.face_attribute(2 + index, "is_support", True)
 
     blocks.append(block)
+    dual.face_attribute(face, "block", block)
+
+    top_frame = Frame.from_plane(Plane.from_points(flattop))
+    top_frame.flip()
+    dual.face_attribute(face, "top_frame", top_frame)
+
+    bottom_frame = Frame.from_plane(Plane.from_points(bottom))
+    bottom_frame.flip()
+    dual.face_attribute(face, "bottom_frame", bottom_frame)
 
 
 # =============================================================================
@@ -76,4 +86,7 @@ scene.clear_context()
 scene.add(dual)
 for block in blocks:
     scene.add(block, facecolor={face: Color.red() for face in block.faces_where(is_support=True)})
+for face in dual.faces():
+    scene.add(dual.face_attribute(face, "top_frame"), scale=20)
+    scene.add(dual.face_attribute(face, "bottom_frame"), scale=20)
 scene.draw()

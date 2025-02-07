@@ -56,5 +56,5 @@ json_dump(dual, pathlib.Path(__file__).parent.parent / "data" / "005_mesh.json")
 
 scene = Scene()
 scene.clear_context()
-scene.add(dual)
+scene.add(dual, show_vertices=True)
 scene.draw()

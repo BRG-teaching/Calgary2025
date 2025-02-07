@@ -1,5 +1,6 @@
 #! python3
 # venv: brg-csd
+# r: compas_model
 
 import pathlib
 
