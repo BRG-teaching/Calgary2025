@@ -34,11 +34,11 @@ for edge in dual.edges():
         p1 = line.point_at(0.3)
         p2 = line.point_at(0.7)
 
-        sphere1a = Sphere(3, point=p1)
-        sphere1b = Sphere(3, point=p2)
+        sphere1a = Sphere(2.5, point=p1)
+        sphere1b = Sphere(2.5, point=p2)
 
-        sphere2a = Sphere(2.8, point=p1)
-        sphere2b = Sphere(2.8, point=p2)
+        sphere2a = Sphere(2.3, point=p1)
+        sphere2b = Sphere(2.3, point=p2)
 
         block1 = block_breps[face1]
         block2 = block_breps[face2]
