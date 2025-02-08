@@ -481,10 +481,10 @@ waffle.create_cross_joint(GAP_JOINT, THICKNESS)
 waffle.add_numbers_and_orient_to_grid()
 
 for polyline in waffle.polylines_u_with_cuts:
-    scene.add(polyline.points)
+    scene.add(polyline)
 
 for polyline in waffle.polylines_v_with_cuts:
-    scene.add(polyline.points)
+    scene.add(polyline)
 
 for polyline in waffle.oriented_polylines_u:
     scene.add(polyline)
