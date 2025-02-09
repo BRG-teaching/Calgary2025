@@ -1,12 +1,26 @@
 #! python3
 # venv: brg-csd
-# r: compas_rv
 
 import compas_rhino.objects
 import compas_rhino.conversions
 from compas.datastructures import Mesh
 from compas.scene import Scene
-from compas.geometry import Translation, Point, Polyline, Vector, Line, distance_point_point, Polygon, Frame, Transformation, bounding_box,Box, Plane, intersection_polyline_plane, midpoint_point_point
+from compas.geometry import (
+    Translation,
+    Point,
+    Polyline,
+    Vector,
+    Line,
+    distance_point_point,
+    Polygon,
+    Frame,
+    Transformation,
+    bounding_box,
+    Box,
+    Plane,
+    intersection_polyline_plane,
+    midpoint_point_point,
+)
 from compas import json_dump
 import pathlib
 import Rhino
@@ -16,7 +30,7 @@ from compas.geometry import trimesh_slice
 
 DIVISION_DISTANCE_U = 50
 DIVISION_DISTANCE_V = 50
-THICKNESS = 1
+THICKNESS = 2
 GAP_JOINT = 1
 Z_OFFSET = 40
 
@@ -41,42 +55,38 @@ guid = rs.GetObject("Select a line as a direction.", rs.filter.curve)
 rh_line = compas_rhino.objects.find_object(guid).Geometry
 line = Line([rh_line.PointAtStart.X, rh_line.PointAtStart.Y, rh_line.PointAtStart.Z], [rh_line.PointAtEnd.X, rh_line.PointAtEnd.Y, rh_line.PointAtEnd.Z])
 
-class Waffle():
 
-    def __init__(self, mesh: Mesh, region : Polyline, direction : line, zoffset : float = 40):
+class Waffle:
+    def __init__(self, mesh: Mesh, region: Polyline, direction: line, zoffset: float = 40):
         self.mesh = mesh
         self.region = region
         self.direction = line
 
         aabb_mesh = self.mesh.aabb()
-        aabb_region =  Box.from_points(bounding_box(self.region.points))
-        aabb_direction= Box.from_points(bounding_box([self.direction.start, self.direction.end]))
-        self.region.transform(Translation.from_vector([0,0,aabb_mesh.zmin-aabb_region.zmin+zoffset]))
-        self.direction.transform(Translation.from_vector([0,0,aabb_mesh.zmin-aabb_direction.zmin+zoffset]))
-
-
+        aabb_region = Box.from_points(bounding_box(self.region.points))
+        aabb_direction = Box.from_points(bounding_box([self.direction.start, self.direction.end]))
+        self.region.transform(Translation.from_vector([0, 0, aabb_mesh.zmin - aabb_region.zmin + zoffset]))
+        self.direction.transform(Translation.from_vector([0, 0, aabb_mesh.zmin - aabb_direction.zmin + zoffset]))
 
         self.planes_u = []
         self.planes_v = []
 
-        self.bottom_lines_u : list[list[Line]] = []
-        self.bottom_lines_v : list[list[Line]] = []
+        self.bottom_lines_u: list[list[Line]] = []
+        self.bottom_lines_v: list[list[Line]] = []
 
-        self.top_polylines_u : list[list[Polyline]] = []
-        self.top_polylines_v : list[list[Polyline]] = []
+        self.top_polylines_u: list[list[Polyline]] = []
+        self.top_polylines_v: list[list[Polyline]] = []
 
-        self.polygons_u : list[Polygon] = []
-        self.polygons_v : list[Polygon] = []
+        self.polygons_u: list[Polygon] = []
+        self.polygons_v: list[Polygon] = []
 
-        self.polylines_u_with_cuts : list[Polyline] = []
-        self.polylines_v_with_cuts : list[Polyline] = []
-        self.frames_u_with_cuts : list[Frame] = []
-        self.frames_v_with_cuts : list[Frame] = []
+        self.polylines_u_with_cuts: list[Polyline] = []
+        self.polylines_v_with_cuts: list[Polyline] = []
+        self.frames_u_with_cuts: list[Frame] = []
+        self.frames_v_with_cuts: list[Frame] = []
 
-        self.oriented_polylines_u : list[Polyline] = []
-        self.oriented_polylines_v : list[Polyline] = []
-
-
+        self.oriented_polylines_u: list[Polyline] = []
+        self.oriented_polylines_v: list[Polyline] = []
 
     @property
     def transformation(self):
@@ -87,13 +97,12 @@ class Waffle():
         """
         mesh_aabb = self.mesh.aabb()
         origin = self.direction.start
-        origin = Point(origin[0], origin[1], origin[2]+mesh_aabb.zmin)
+        origin = Point(origin[0], origin[1], origin[2] + mesh_aabb.zmin)
         x_axis = self.direction.direction
         y_axis = x_axis.cross(Vector(0, 0, -1))  # Ensure perpendicular vector in the XY plane
         frame = Frame(origin, x_axis, y_axis)
-        
-        return Transformation.from_frame_to_frame(frame, Frame.worldXY())
 
+        return Transformation.from_frame_to_frame(frame, Frame.worldXY())
 
     def get_cut_planes(self, distance_u: float, distance_v: float):
         """
@@ -101,7 +110,7 @@ class Waffle():
         """
         T = self.transformation
         region_transformed = self.region.transformed(T)
-        
+
         aabb = Box.from_points(bounding_box(region_transformed))
         origin = aabb.corner(0)
 
@@ -111,13 +120,12 @@ class Waffle():
         self.planes_u = generate_planes(distance_u, ceil(aabb.xsize / distance_u), Vector.Xaxis())
         self.planes_v = generate_planes(distance_v, ceil(aabb.ysize / distance_v), Vector.Yaxis())
 
-    
-    def section_region(self, tolerance = 0.01):
+    def section_region(self, tolerance=0.01):
         """
         Intersections of region and cut planes with the transformed region.
         """
         T = self.transformation
-        
+
         region_transformed = self.region.transformed(T)
 
         polygon = Polygon(region_transformed.points[:-1])
@@ -129,17 +137,15 @@ class Waffle():
                 lines = []
                 for i in range(len(points) - 1):
                     p0 = Point(*points[i])
-                    p1 = Point(*points[i+1])
+                    p1 = Point(*points[i + 1])
                     pmid = Point(*midpoint_point_point(p0, p1))
                     if pmid.in_polygon(polygon):
-                    #if p0.distance_to_point(p1) > tolerance:
-                        lines.append(Line(p0,p1))
+                        # if p0.distance_to_point(p1) > tolerance:
+                        lines.append(Line(p0, p1))
                 bottom_lines.append(lines)
-        
 
         process_cut_planes(self.planes_u, self.bottom_lines_u, 1)
         process_cut_planes(self.planes_v, self.bottom_lines_v, 0)
-
 
     def section_mesh(self):
         """
@@ -150,7 +156,7 @@ class Waffle():
 
         def extract_polylines(coordinates):
             return [Polyline([Point(*point) for point in polyline]) for polyline in coordinates]
-        
+
         for plane in self.planes_u:
             try:
                 result = trimesh_slice((V, F), [plane])
@@ -166,9 +172,6 @@ class Waffle():
                     self.top_polylines_v.append(extract_polylines(result))
             except:
                 pass
-
-
-
 
     def clip_polyline(self):
         """
@@ -224,9 +227,7 @@ class Waffle():
         process_direction(self.bottom_lines_u, self.top_polylines_u, self.polygons_u)
         process_direction(self.bottom_lines_v, self.top_polylines_v, self.polygons_v)
 
-
-    def create_cross_joint(self, gap_joint :float, thickness : float) :
-
+    def create_cross_joint(self, gap_joint: float, thickness: float):
         # Process data
         polylines_u_vertical = []
         polylines_u_vertical_planes = []
@@ -238,146 +239,132 @@ class Waffle():
 
         counter = 0
         for idx, polygon in enumerate(self.polygons_u):
-            if(len(polygon.points)>2):
+            if len(polygon.points) > 2:
                 polylines_u_vertical.append(Polyline(polygon.points))
                 polylines_u_vertical_planes.append(polygon.plane)
                 polylines_u_vertical_cuts[counter] = []
-                counter = counter +1
+                counter = counter + 1
 
         counter = 0
         for idx, polygon in enumerate(self.polygons_v):
-            if(len(polygon.points)>2):
+            if len(polygon.points) > 2:
                 polylines_v_vertical.append(Polyline(polygon.points))
                 polylines_v_vertical_planes.append(polygon.plane)
                 polylines_v_vertical_cuts[counter] = []
-                counter = counter +1
-        
+                counter = counter + 1
 
         # Intersection Polygons
-        boolean_offset_vector = Vector(0,0,max(self.mesh.transformed(self.transformation).aabb().zsize,1))
-        gap_vector = Vector(0,0, gap_joint*0.5)
+        boolean_offset_vector = Vector(0, 0, max(self.mesh.transformed(self.transformation).aabb().zsize, 1))
+        gap_vector = Vector(0, 0, gap_joint * 0.5)
 
         for i in range(len(polylines_u_vertical)):
             for j in range(len(polylines_v_vertical)):
                 result = intersection_polyline_plane(polylines_u_vertical[i], polylines_v_vertical_planes[j])
                 if not result:
-                    continue 
+                    continue
                 if len(result) != 2:
-                    continue 
+                    continue
 
                 if result[0][2] > result[1][2]:
                     result[0], result[1] = result[1], result[0]
-                
-                
+
                 p0 = Point(*result[0]) - boolean_offset_vector
                 p1 = Point(*result[1]) + boolean_offset_vector
 
-                pmid = Point((result[0][0]+result[1][0])*0.5, (result[0][1]+result[1][1])*0.5, (result[0][2]+result[1][2])*0.5)
+                pmid = Point((result[0][0] + result[1][0]) * 0.5, (result[0][1] + result[1][1]) * 0.5, (result[0][2] + result[1][2]) * 0.5)
 
+                offset_dir = (p0 - pmid).cross(polylines_u_vertical_planes[i].normal).unitized()
 
-                offset_dir = (p0-pmid).cross(polylines_u_vertical_planes[i].normal).unitized()
+                polyline_u = Polyline(
+                    [
+                        p0 + offset_dir * thickness * 0.5,
+                        pmid + offset_dir * thickness * 0.5 + gap_vector * 0.5,
+                        pmid - offset_dir * thickness * 0.5 + gap_vector * 0.5,
+                        p0 - offset_dir * thickness * 0.5,
+                    ]
+                )
 
-                polyline_u = Polyline([
-                    p0 + offset_dir * thickness*0.5,
-                    pmid+ offset_dir * thickness*0.5 + gap_vector*0.5,
-                    pmid- offset_dir * thickness*0.5+ gap_vector*0.5,
-                    p0- offset_dir * thickness*0.5,
-                ])
-
-                offset_dir = (p1-pmid).cross(polylines_v_vertical_planes[j].normal).unitized()
-                polyline_v = Polyline([
-                    p1 + offset_dir * thickness*0.5,
-                    pmid+ offset_dir * thickness*0.5- gap_vector*0.5,
-                    pmid- offset_dir * thickness*0.5- gap_vector*0.5,
-                    p1- offset_dir * thickness*0.5,
-                ])
+                offset_dir = (p1 - pmid).cross(polylines_v_vertical_planes[j].normal).unitized()
+                polyline_v = Polyline(
+                    [
+                        p1 + offset_dir * thickness * 0.5,
+                        pmid + offset_dir * thickness * 0.5 - gap_vector * 0.5,
+                        pmid - offset_dir * thickness * 0.5 - gap_vector * 0.5,
+                        p1 - offset_dir * thickness * 0.5,
+                    ]
+                )
                 polylines_u_vertical_cuts[i].append(polyline_u)
                 polylines_v_vertical_cuts[j].append(polyline_v)
-
-
-
 
         # =============================================================================
         # Boolean Difference the Cuts
         # =============================================================================
 
         X = self.transformation.inverse()
-        
+
         for key, value in polylines_u_vertical_cuts.items():
-
-            if(len(value)==0):
+            if len(value) == 0:
                 continue
-
 
             a = Polygon(polylines_u_vertical[key])
             frame = a.frame
             T = Transformation.from_frame_to_frame(frame, Frame.worldXY())
             T_I = Transformation.from_frame_to_frame(Frame.worldXY(), frame)
             a.transform(T)
-            
+
             for o in value:
                 b = Polygon(o.points)
                 c = a.boolean_difference(b.transformed(T))
                 a = c
-            
+
             a.transform(T_I)
-            self.polylines_u_with_cuts.append(Polyline(a.points+[a.points[0]]))
+            self.polylines_u_with_cuts.append(Polyline(a.points + [a.points[0]]))
             self.polylines_u_with_cuts[-1].transform(X)
             self.frames_u_with_cuts.append(frame.transformed(X))
 
-
         for key, value in polylines_v_vertical_cuts.items():
-
-            if(len(value)==0):
+            if len(value) == 0:
                 continue
-
 
             a = Polygon(polylines_v_vertical[key])
             frame = a.frame
-            
+
             T = Transformation.from_frame_to_frame(frame, Frame.worldXY())
             T_I = Transformation.from_frame_to_frame(Frame.worldXY(), frame)
             a.transform(T)
 
-
             for o in value:
                 b = Polygon(o.points)
                 a = a.boolean_difference(b.transformed(T))
-            
+
             a.transform(T_I)
-            self.polylines_v_with_cuts.append(Polyline(a.points+[a.points[0]]))
+            self.polylines_v_with_cuts.append(Polyline(a.points + [a.points[0]]))
             self.polylines_v_with_cuts[-1].transform(X)
             self.frames_v_with_cuts.append(frame.transformed(X))
-
-
-
-
 
         # for polyline in self.polygons_u:
         #     scene.add(polyline)
 
         # for polyline in self.polygons_v:
         #     scene.add(polyline)
-    
 
     def low_res_font(self):
         """
         Returns a dictionary of polylines representing low-resolution characters (A-Z, 0-9).
         """
         font = {
-            'A': [Polyline([Point(0, 0, 0), Point(0.5, 2, 0), Point(1, 0, 0), Point(0.75, 1, 0), Point(0.25, 1, 0), Point(0, 0, 0)])],
-            'B': [Polyline([Point(0, 2, 0), Point(0.5, 2, 0), Point(1, 1.5, 0), Point(0.5, 1, 0),
-                            Point(1, 0.5, 0), Point(0.5, 0, 0), Point(0, 0, 0), Point(0, 2, 0)])],
-            '0': [Polyline([Point(0, 0, 0), Point(0, 2, 0), Point(1, 2, 0), Point(1, 0, 0), Point(0, 0, 0)])],
-            '1': [Polyline([Point(0.5, 0, 0), Point(0.5, 2, 0)])],
-            '2': [Polyline([Point(0, 2, 0), Point(1, 2, 0), Point(1, 1, 0), Point(0, 0, 0), Point(1, 0, 0)])],
-            '3': [Polyline([Point(0, 2, 0), Point(1, 2, 0), Point(1, 1, 0), Point(0.5, 1, 0), Point(1, 1, 0), Point(1, 0, 0), Point(0, 0, 0)])],
-            '4': [Polyline([Point(0, 2, 0), Point(0, 1, 0), Point(1, 1, 0), Point(1, 2, 0), Point(1, 0, 0)])],
-            '5': [Polyline([Point(1, 2, 0), Point(0, 2, 0), Point(0, 1, 0), Point(1, 1, 0), Point(1, 0, 0), Point(0, 0, 0)])],
-            '6': [Polyline([Point(1, 2, 0), Point(0, 2, 0), Point(0, 0, 0), Point(1, 0, 0), Point(1, 1, 0), Point(0, 1, 0)])],
-            '7': [Polyline([Point(0, 2, 0), Point(1, 2, 0), Point(0.5, 0, 0)])],
-            '8': [Polyline([Point(0, 0, 0), Point(0, 2, 0), Point(1, 2, 0), Point(1, 0, 0), Point(0, 0, 0), Point(0, 1, 0), Point(1, 1, 0)])],
-            '9': [Polyline([Point(1, 0, 0), Point(1, 2, 0), Point(0, 2, 0), Point(0, 1, 0), Point(1, 1, 0)])]
+            "A": [Polyline([Point(0, 0, 0), Point(0.5, 2, 0), Point(1, 0, 0), Point(0.75, 1, 0), Point(0.25, 1, 0), Point(0, 0, 0)])],
+            "B": [Polyline([Point(0, 2, 0), Point(0.5, 2, 0), Point(1, 1.5, 0), Point(0.5, 1, 0), Point(1, 0.5, 0), Point(0.5, 0, 0), Point(0, 0, 0), Point(0, 2, 0)])],
+            "0": [Polyline([Point(0, 0, 0), Point(0, 2, 0), Point(1, 2, 0), Point(1, 0, 0), Point(0, 0, 0)])],
+            "1": [Polyline([Point(0.5, 0, 0), Point(0.5, 2, 0)])],
+            "2": [Polyline([Point(0, 2, 0), Point(1, 2, 0), Point(1, 1, 0), Point(0, 0, 0), Point(1, 0, 0)])],
+            "3": [Polyline([Point(0, 2, 0), Point(1, 2, 0), Point(1, 1, 0), Point(0.5, 1, 0), Point(1, 1, 0), Point(1, 0, 0), Point(0, 0, 0)])],
+            "4": [Polyline([Point(0, 2, 0), Point(0, 1, 0), Point(1, 1, 0), Point(1, 2, 0), Point(1, 0, 0)])],
+            "5": [Polyline([Point(1, 2, 0), Point(0, 2, 0), Point(0, 1, 0), Point(1, 1, 0), Point(1, 0, 0), Point(0, 0, 0)])],
+            "6": [Polyline([Point(1, 2, 0), Point(0, 2, 0), Point(0, 0, 0), Point(1, 0, 0), Point(1, 1, 0), Point(0, 1, 0)])],
+            "7": [Polyline([Point(0, 2, 0), Point(1, 2, 0), Point(0.5, 0, 0)])],
+            "8": [Polyline([Point(0, 0, 0), Point(0, 2, 0), Point(1, 2, 0), Point(1, 0, 0), Point(0, 0, 0), Point(0, 1, 0), Point(1, 1, 0)])],
+            "9": [Polyline([Point(1, 0, 0), Point(1, 2, 0), Point(0, 2, 0), Point(0, 1, 0), Point(1, 1, 0)])],
         }
         return font
 
@@ -388,7 +375,7 @@ class Waffle():
         font = self.low_res_font()
         geometry = []
         x_offset = 0
-        
+
         for char in text.upper():
             if char in font:
                 for polyline in font[char]:
@@ -399,77 +386,67 @@ class Waffle():
         T = Translation.from_vector(offset)
         X = Transformation.from_frame_to_frame(Frame.worldXY(), frame)
         for g in geometry:
-            g.scale(size*0.5)
+            g.scale(size * 0.5)
             g.transform(X)
             g.transform(T)
-        
+
         return geometry
 
-
-        
-    def add_numbers_and_orient_to_grid(self, gap:float = 10):
-
+    def add_numbers_and_orient_to_grid(self, gap: float = 10):
         width = 0
         max_height = 0
         for idx, polyline in enumerate(self.polylines_u_with_cuts):
-
             box = Box.from_points(bounding_box(polyline.points))
             frame = self.frames_u_with_cuts[idx]
-            frame.point = Point(frame.point[0],frame.point[1],box.zmin)
+            frame.point = Point(frame.point[0], frame.point[1], box.zmin)
             T = Transformation.from_frame_to_frame(frame, Frame.worldXY())
             T_I = Transformation.from_frame_to_frame(Frame.worldXY(), frame)
             xy_polyline = polyline.transformed(T)
             xy_frame = Frame.worldXY()
 
             box = Box.from_points(bounding_box(xy_polyline.points))
-            T = Translation.from_vector([-box.xmin+width, 0,0])
+            T = Translation.from_vector([-box.xmin + width, 0, 0])
             xy_polyline = xy_polyline.transformed(T)
-            T = Translation.from_vector([width, 0,0])
+            T = Translation.from_vector([width, 0, 0])
             xy_frame.transform(T)
-            width = width+box.xsize+gap
+            width = width + box.xsize + gap
 
             if box.ysize > max_height:
                 max_height = box.ysize
-            
-            text_xy = self.string_to_geometry("A"+str(idx), xy_frame, 10, Vector(5,5,0))
+
+            text_xy = self.string_to_geometry("A" + str(idx), xy_frame, 10, Vector(5, 5, 0))
             for t in text_xy:
                 self.oriented_polylines_u.append(t)
-                self.oriented_polylines_u.append(t.transformed(T_I*T.inverse()*Translation.from_vector([box.xmin, 0,0])))
-   
+                self.oriented_polylines_u.append(t.transformed(T_I * T.inverse() * Translation.from_vector([box.xmin, 0, 0])))
+
             self.oriented_polylines_u.append(xy_polyline)
-
-
 
         width = 0
         for idx, polyline in enumerate(self.polylines_v_with_cuts):
-
             box = Box.from_points(bounding_box(polyline.points))
             frame = self.frames_v_with_cuts[idx]
-            frame.point = Point(frame.point[0],frame.point[1],box.zmin)
+            frame.point = Point(frame.point[0], frame.point[1], box.zmin)
             T = Transformation.from_frame_to_frame(frame, Frame.worldXY())
             T_I = Transformation.from_frame_to_frame(Frame.worldXY(), frame)
             xy_polyline = polyline.transformed(T)
             xy_frame = Frame.worldXY()
 
             box = Box.from_points(bounding_box(xy_polyline.points))
-            T = Translation.from_vector([-box.xmin+width,  max_height+gap,0])
+            T = Translation.from_vector([-box.xmin + width, max_height + gap, 0])
             xy_polyline = xy_polyline.transformed(T)
-            T = Translation.from_vector([width, max_height+gap,0])
+            T = Translation.from_vector([width, max_height + gap, 0])
             xy_frame.transform(T)
-            width = width+box.xsize+gap
+            width = width + box.xsize + gap
 
             if box.ysize > max_height:
                 max_height = box.ysize
-            
-            text_xy = self.string_to_geometry("B"+str(idx), xy_frame, 10, Vector(5,5,0))
+
+            text_xy = self.string_to_geometry("B" + str(idx), xy_frame, 10, Vector(5, 5, 0))
             for t in text_xy:
                 self.oriented_polylines_v.append(t)
-                self.oriented_polylines_v.append(t.transformed(T_I*T.inverse()*Translation.from_vector([box.xmin, 0,0])))
+                self.oriented_polylines_v.append(t.transformed(T_I * T.inverse() * Translation.from_vector([box.xmin, 0, 0])))
 
             self.oriented_polylines_v.append(xy_polyline)
-
-
-
 
 
 waffle = Waffle(mesh, polyline, line, Z_OFFSET)

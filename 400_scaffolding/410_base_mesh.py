@@ -22,6 +22,4 @@ blocks = data["blocks"]
 print(mesh)
 scene = Scene()
 scene.add(mesh)
-# for o in blocks:
-#     scene.add(o)
 scene.draw()
