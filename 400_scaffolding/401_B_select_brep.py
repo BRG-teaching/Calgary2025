@@ -10,11 +10,9 @@ brep = compas_rhino.conversions.brepobject_to_compas(guid)
 print(brep)
 
 # Add code below: 1) copy geometry, transform it and add it to scene.
-T = Translation.from_vector([0,0,10])
+T = Translation.from_vector([0, 0, 10])
 brep.transform(T)
 
 scene = Scene()
 scene.add(brep)
 scene.draw()
-
-

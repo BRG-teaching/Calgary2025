@@ -14,4 +14,3 @@ polyline = compas_rhino.conversions.curve_to_compas_polyline(obj.Geometry)
 polygon = Polygon(polyline.points[:-1])
 plane = polygon.plane
 print(plane)
-

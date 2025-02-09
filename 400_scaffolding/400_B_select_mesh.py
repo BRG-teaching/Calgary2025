@@ -10,11 +10,9 @@ mesh = compas_rhino.conversions.meshobject_to_compas(guid)
 print(mesh)
 
 # Copy mesh, transform it and add to scene.
-T = Translation.from_vector([0,0,10])
+T = Translation.from_vector([0, 0, 10])
 mesh.transform(T)
 
 scene = Scene()
 scene.add(mesh)
 scene.draw()
-
-

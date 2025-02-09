@@ -9,4 +9,4 @@ guids = compas_rhino.objects.select_objects()
 points = []
 for guid in guids:
     points.append(compas_rhino.conversions.pointobject_to_compas(guid))
-print(points) 
+print(points)

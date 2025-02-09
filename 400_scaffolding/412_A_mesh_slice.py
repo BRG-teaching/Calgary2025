@@ -4,11 +4,7 @@
 import compas_rhino
 from compas.scene import Scene
 
-from compas.geometry import (
-    Polyline,
-    Polygon,
-    trimesh_slice
-)
+from compas.geometry import Polyline, Polygon, trimesh_slice
 
 #####################################################################
 # Select a mesh and a polyline
