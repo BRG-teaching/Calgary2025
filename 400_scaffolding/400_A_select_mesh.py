@@ -5,8 +5,6 @@ import compas_rhino
 from compas.scene import Scene
 from compas.geometry import Translation
 
-guid = compas_rhino.objects.select_mesh()
-mesh = compas_rhino.conversions.meshobject_to_compas(guid)
-print(mesh)
+ # Select a mesh object in Rhino
 
 # Copy mesh, transform it and add to scene.
