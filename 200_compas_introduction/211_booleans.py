@@ -15,8 +15,12 @@ box = Box(2)
 sphere = Sphere(radius=1.0, point=[1, 1, 1])
 result = box.to_brep() - sphere.to_brep()
 
-# Create a scene and add the result and polygons to it
+# Create a scene
 scene = Scene()
 scene.clear_context()
+
+# Add the result to the scene
 scene.add(result)
+
+# Draw the scene
 scene.draw()

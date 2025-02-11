@@ -34,6 +34,6 @@ for vertex_key in mesh.vertices():
 # Draw the scene
 scene.draw()
 
-
+# Dump the mesh to a JSON file
 filepath = pathlib.Path(__file__).parent.parent / "data" / "mesh_attributes2.json"
 json_dump(mesh, filepath)
