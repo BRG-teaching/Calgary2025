@@ -3,8 +3,6 @@
 # r: compas_rv
 
 import pathlib
-
-from compas.colors import Color
 from compas.geometry import Box
 from compas.scene import Scene
 
@@ -17,7 +15,7 @@ box = Box.from_json(filepath)
 # Create a scene and add the box to it
 scene = Scene()
 scene.clear_context()
-scene.add(box, color=Color.green())
+scene.add(box)
 
 # Draw the scene
 scene.draw()
