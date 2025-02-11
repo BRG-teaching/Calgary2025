@@ -32,7 +32,7 @@ DIVISION_DISTANCE_U = 50
 DIVISION_DISTANCE_V = 50
 THICKNESS = 2
 GAP_JOINT = 1
-Z_OFFSET = 40
+Z_OFFSET = -40
 
 scene = Scene()
 
@@ -61,6 +61,7 @@ class Waffle:
         self.mesh = mesh
         self.region = region
         self.direction = line
+        self.proces_region()
 
         aabb_mesh = self.mesh.aabb()
         aabb_region = Box.from_points(bounding_box(self.region.points))
@@ -104,6 +105,17 @@ class Waffle:
 
         return Transformation.from_frame_to_frame(frame, Frame.worldXY())
 
+    def proces_region(self):
+        
+        points = []
+        for vertex in self.mesh.vertices_on_boundary():
+            p = self.mesh.vertex_point(vertex)
+            points.append(Point(p[0], p[1], 0))
+        polygon = Polygon(points)
+
+        result = Polygon(self.region.points[:-1]).boolean_intersection(polygon)
+        self.region = Polyline(result.points + [result[0]])     
+
     def get_cut_planes(self, distance_u: float, distance_v: float):
         """
         From the oriented region bounding-box and division distances construct the cutting frames.
@@ -124,6 +136,9 @@ class Waffle:
         """
         Intersections of region and cut planes with the transformed region.
         """
+
+
+
         T = self.transformation
 
         region_transformed = self.region.transformed(T)
@@ -158,19 +173,27 @@ class Waffle:
             return [Polyline([Point(*point) for point in polyline]) for polyline in coordinates]
 
         for plane in self.planes_u:
+            
             try:
                 result = trimesh_slice((V, F), [plane])
                 if result:
                     self.top_polylines_u.append(extract_polylines(result))
             except:
+                self.top_polylines_u.append([])
+                
+                print("section_mesh error u-direction")
                 pass
 
         for plane in self.planes_v:
+           
             try:
                 result = trimesh_slice((V, F), [plane])
                 if result:
                     self.top_polylines_v.append(extract_polylines(result))
             except:
+                self.top_polylines_v.append([])
+                
+                print("section_mesh error v-direction")
                 pass
 
     def clip_polyline(self):
@@ -178,8 +201,14 @@ class Waffle:
         Cut the mesh polylines by the bottom lines' end points in both U and V directions.
         """
 
-        def process_direction(bottom_lines, top_polylines, closed_polylines):
+        def process_direction(bottom_lines, top_polylines, closed_polylines, tol = 0.01):
+
+            
+
+         
+                
             for i in range(len(bottom_lines)):
+
                 lines = bottom_lines[i]
                 polylines = top_polylines[i]
 
@@ -187,10 +216,31 @@ class Waffle:
                     plane0 = Plane(line.start, -line.direction)
                     plane1 = Plane(line.end, line.direction)
 
+
                     points = []
                     for polyline in polylines:
-                        points0 = intersection_polyline_plane(polyline, plane0)
-                        points1 = intersection_polyline_plane(polyline, plane1)
+
+                        points0 = []
+                        points1 = []
+
+                        # End points of lines as planes are intersected with polyline.
+                        # COMPAS bug: when end points of polyline and line have the same position, intersection is not found.
+                        # This border cases is handled in if and elif statements below.
+                        if(abs(polyline[0][0]-line.start[0]) < tol and abs(polyline[0][1]-line.start[1]) < tol):
+                            points0 = [polyline[0]]
+                        elif(abs(polyline[-1][0]-line.start[0]) < tol and abs(polyline[-1][1]-line.start[1]) < tol):
+                            points0 = [polyline[-1]]
+                        else:
+                            points0 = intersection_polyline_plane(polyline, plane0)
+
+                        if(abs(polyline[0][0]-line.end[0]) < tol and abs(polyline[0][1]-line.end[1]) < tol):
+                            points1 = [polyline[0]]
+                        elif(abs(polyline[-1][0]-line.end[0]) < tol and abs(polyline[-1][1]-line.end[1]) < tol):
+                            points1 = [polyline[-1]]
+                        else:
+                            points1 = intersection_polyline_plane(polyline, plane1)
+
+                    
 
                         if len(points0) > 1 and len(points1) > 1:
                             # print("Waffle.clip_polyline: more than one intersection point per line and polyline pair, skipping this case.")
@@ -222,6 +272,15 @@ class Waffle:
 
                             points.extend([p2, p3])
                             closed_polylines.append(Polygon(points))
+                            # scene.add(closed_polylines[-1])
+                        else:
+                            print(points0, points1)
+                            scene.add(line)
+                            scene.add(polyline)
+                            scene.add(plane0)
+                            scene.add(plane1)
+                            
+
 
         # Process both U and V directions using the helper function
         process_direction(self.bottom_lines_u, self.top_polylines_u, self.polygons_u)
@@ -468,5 +527,13 @@ for polyline in waffle.oriented_polylines_u:
 
 for polyline in waffle.oriented_polylines_v:
     scene.add(polyline)
+
+# for polygon in waffle.polygons_u:
+#     scene.add(polygon)
+
+# for polygon in waffle.polygons_v:
+#     scene.add(polygon)
+
+
 
 scene.draw()

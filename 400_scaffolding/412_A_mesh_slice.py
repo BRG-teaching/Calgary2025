@@ -25,16 +25,7 @@ print(plane)
 # Slice mesh with a plane
 #####################################################################
 
-V, F = mesh.to_vertices_and_faces()
-polylines_coordinates = trimesh_slice((V, F), [plane])
 
 #####################################################################
 # Add objects to the Scene
 #####################################################################
-
-scene = Scene()
-polylines = []
-for polyline_coordinates in polylines_coordinates:
-    polyline = Polyline(polyline_coordinates)
-    scene.add(polyline, color=(255, 0, 0))
-scene.draw()
