@@ -14,9 +14,10 @@ scene = Scene()
 scene.clear_context()
 scene.add(mesh)
 
-
+# Iterate over the vertices
 for vertex_key in mesh.vertices():
-    # Get the sphere    
+
+    # Get the sphere
     sphere = mesh.vertex_attribute(vertex_key, "sphere")
 
     # If the sphere is not None, add it to the scene

@@ -19,6 +19,7 @@ scene.add(mesh)
 # Get a list of boundary vertices
 boundary_vertices = mesh.vertices_on_boundary()
 
+# Iterate over the vertices
 for vertex_key in mesh.vertices():
 
     # If the vertex is a boundary vertex, color it red
