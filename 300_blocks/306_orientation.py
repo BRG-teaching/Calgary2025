@@ -23,7 +23,7 @@ for face in dual.faces():
     frame = block.face_frame(top_face)
     
     scene.add(block)
-    scene.add(frame, scale=20)
+    scene.add(frame, scale=50)
 
     blocks.append((block, frame))
 
@@ -46,4 +46,6 @@ for i, (block, frame) in enumerate(blocks):
     block_transformed = block.transformed(T)
 
     scene.add(block_transformed)
+    scene.add(target_frame, scale=50)
+
 scene.draw()
